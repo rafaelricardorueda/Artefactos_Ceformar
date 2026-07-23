@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Principio de Pareto · Clasificación ABC</title>
+<style>
+  :root{
+    --bg:#0a0e1a;
+    --bg-glow: radial-gradient(1100px 650px at 12% -10%, #16203a 0%, transparent 60%),
+               radial-gradient(950px 550px at 105% 10%, #1c1530 0%, transparent 55%),
+               #060911;
+    --panel:#111a2e;
+    --panel-2:#16223c;
+    --line:#263250;
+    --ink:#eef2fb;
+    --muted:#8fa0c4;
+    --a-color:#2ecc71;
+    --a-dk:#1c7a41;
+    --b-color:#f5b325;
+    --b-dk:#b8790f;
+    --c-color:#ef5350;
+    --c-dk:#a12622;
+    --cum-line:#5ee7ff;
+    --font-display:'Trebuchet MS','Segoe UI',sans-serif;
+    --font-body:'Segoe UI',system-ui,-apple-system,Helvetica,Arial,sans-serif;
+    --font-mono:'Consolas','Courier New',monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0; min-height:100vh;
+    background:var(--bg-glow);
+    color:var(--ink);
+    font-family:var(--font-body);
+    display:flex; flex-direction:column;
+  }
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image:
+      linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+    background-size:44px 44px;
+  }
+
+  header{
+    position:relative; z-index:2;
+    padding:22px 26px 12px; text-align:center;
+  }
+  .eyebrow{
+    font-size:.7rem; letter-spacing:.24em; text-transform:uppercase;
+    color:var(--b-color); font-weight:800;
+  }
+  h1{
+    margin:6px 0 4px; font-family:var(--font-display); font-weight:800;
+    font-size:clamp(1.5rem,3vw,2.2rem); letter-spacing:.01em;
+    text-transform:uppercase;
+  }
+  h1 span.hi{ color:var(--a-color); }
+  .subtitle{ color:var(--muted); font-size:.9rem; max-width:680px; margin:0 auto; }
+
+  .toolbar{
+    display:flex; gap:10px; justify-content:center; flex-wrap:wrap; align-items:center;
+    margin-top:16px;
+  }
+  .toolbar label{ font-size:.78rem; color:var(--muted); font-weight:700; display:flex; align-items:center; gap:6px; }
+  select{
+    background:var(--panel-2); color:var(--ink); border:1px solid var(--line);
+    border-radius:8px; padding:8px 10px; font-family:var(--font-mono); font-weight:700;
+  }
+  .btn{
+    border:none; cursor:pointer; font-family:var(--font-body); font-weight:700;
+    border-radius:10px; padding:11px 18px; letter-spacing:.02em; font-size:.86rem;
+    transition:transform .15s ease, box-shadow .15s ease, filter .15s ease;
+  }
+  .btn:active{ transform:translateY(1px) scale(.98); }
+  .btn:disabled{ opacity:.4; cursor:not-allowed; }
+  .btn-primary{
+    color:#062012;
+    background:linear-gradient(180deg,#7cf0a4,var(--a-color) 60%,var(--a-dk));
+    box-shadow:0 6px 0 var(--a-dk), 0 12px 22px rgba(46,204,113,.25);
+  }
+  .btn-primary:hover:not(:disabled){ filter:brightness(1.06); }
+  .btn-primary:active:not(:disabled){ box-shadow:0 2px 0 var(--a-dk); transform:translateY(4px); }
+  .btn-amber{
+    color:#241804;
+    background:linear-gradient(180deg,#ffd97a,var(--b-color) 60%,var(--b-dk));
+    box-shadow:0 6px 0 var(--b-dk), 0 12px 22px rgba(245,179,37,.25);
+  }
+  .btn-amber:hover:not(:disabled){ filter:brightness(1.05); }
+  .btn-amber:active:not(:disabled){ box-shadow:0 2px 0 var(--b-dk); transform:translateY(4px); }
+  .btn-ghost{ background:var(--panel-2); color:var(--ink); border:1px solid var(--line); }
+  .btn-ghost:hover:not(:disabled){ background:#1c2a48; }
+
+  main{
+    position:relative; z-index:2;
+    flex:1; max-width:1200px; margin:0 auto; width:100%;
+    padding:14px 26px 40px;
+    display:flex; flex-direction:column; gap:22px;
+  }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line); border-radius:16px;
+    padding:20px 22px 24px;
+    box-shadow:0 20px 45px rgba(0,0,0,.35);
+  }
+  .panel-head{
+    display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+    margin-bottom:14px;
+  }
+  .panel-head h2{ margin:0; font-family:var(--font-display); font-size:1.05rem; letter-spacing:.02em; text-transform:uppercase; }
+  .scenario-tag{ font-family:var(--font-mono); font-size:.78rem; color:var(--muted); }
+
+  .table-scroll{ overflow-x:auto; }
+  table{ border-collapse:collapse; width:100%; min-width:760px; }
+  thead th{
+    font-size:.68rem; text-transform:uppercase; letter-spacing:.05em; font-weight:800;
+    color:var(--muted); text-align:center; padding:6px 8px 12px;
+    border-bottom:2px solid var(--line);
+  }
+  thead th.col-prod{ text-align:left; }
+  tbody td{
+    padding:10px 8px; border-bottom:1px solid var(--line);
+    text-align:center; vertical-align:middle;
+    transition:background .35s ease, opacity .35s ease;
+  }
+  tbody tr{ transition:opacity .3s ease; }
+  tbody tr.fade-out{ opacity:0; }
+  .prod-cell{ display:flex; align-items:center; gap:8px; font-weight:700; font-size:.92rem; text-align:left; }
+  .prod-icon{ font-size:1.2rem; }
+  .given-value{ font-family:var(--font-mono); font-weight:800; font-size:.98rem; color:var(--ink); }
+
+  .cell-input{
+    display:inline-flex; align-items:center; gap:2px;
+    background:#0c1425; border:1.5px solid var(--line); border-radius:8px;
+    padding:5px 8px; min-width:54px;
+  }
+  .cell-input input, .cell-input select{
+    width:56px; border:none; outline:none; background:transparent;
+    font-family:var(--font-mono); font-size:.9rem; text-align:center; color:var(--ink);
+  }
+  .cell-input.wide input{ width:66px; }
+  .cell-input select{ width:64px; cursor:pointer; }
+  .cell-input.correct{ border-color:var(--a-color); background:rgba(46,204,113,.14); }
+  .cell-input.incorrect{ border-color:var(--c-color); background:rgba(239,83,80,.14); }
+
+  .class-a{ color:var(--a-color); font-weight:800; }
+  .class-b{ color:var(--b-color); font-weight:800; }
+  .class-c{ color:var(--c-color); font-weight:800; }
+
+  .score-bar{
+    margin-top:16px; padding:12px 16px; border-radius:10px;
+    background:var(--panel-2); border:1px dashed var(--line);
+    font-weight:800; font-size:.92rem; display:none; align-items:center; gap:10px;
+  }
+  .score-bar.show{ display:flex; }
+  .score-bar.good{ color:var(--a-color); }
+  .score-bar.bad{ color:var(--c-color); }
+
+  .legend-row{
+    display:flex; gap:18px; flex-wrap:wrap; margin-top:10px; font-size:.78rem; color:var(--muted);
+  }
+  .legend-row b{ font-weight:800; }
+  .legend-row .dot{ display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; vertical-align:middle; }
+
+  /* Chart */
+  .chart-panel{ display:none; }
+  .chart-panel.show{ display:block; }
+  .chart-wrap{ width:100%; overflow-x:auto; }
+  svg.pareto-chart{ display:block; margin:0 auto; }
+
+  .instructions{ position:relative; z-index:2; }
+  details{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    padding:14px 18px; color:#c7d2ee; font-size:.88rem;
+  }
+  summary{ cursor:pointer; font-weight:800; color:var(--b-color); }
+  details ol{ margin:10px 0 4px; padding-left:20px; line-height:1.7; }
+  details b{ color:#fff; }
+
+  footer{
+    text-align:center; padding:10px; font-size:.72rem; color:#5c6a8f;
+    position:relative; z-index:2;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:.01ms !important; transition-duration:.01ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">Análisis ABC · Regla 80 / 20</div>
+  <h1>Principio de <span class="hi">Pareto</span></h1>
+  <p class="subtitle">Ordena los productos de mayor a menor, calcula su participación porcentual y clasifícalos en A, B o C según el porcentaje acumulado.</p>
+  <div class="toolbar">
+    <label>Cantidad de productos
+      <select id="countSelect">
+        <option value="5">5</option>
+        <option value="6">6</option>
+        <option value="7">7</option>
+        <option value="8">8</option>
+        <option value="9">9</option>
+        <option value="10">10</option>
+      </select>
+    </label>
+    <button class="btn btn-primary" id="newCaseBtn">🎲 Generar nuevo caso</button>
+    <button class="btn btn-amber" id="organizeBtn">🔀 Organizar</button>
+    <button class="btn btn-primary" id="verifyBtn">✅ Verificar</button>
+    <button class="btn btn-ghost" id="revealBtn">👁 Revelar respuestas</button>
+    <button class="btn btn-ghost" id="retryBtn">↺ Reiniciar intento</button>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Tabla de análisis</h2>
+      <span class="scenario-tag" id="scenarioTag">Escenario: unidades vendidas en el trimestre</span>
+    </div>
+
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th class="col-prod">Producto</th>
+            <th>Cantidad</th>
+            <th>Orden</th>
+            <th>%</th>
+            <th>% Acumulado</th>
+            <th>Clasificación</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"><!-- generado por JS --></tbody>
+      </table>
+    </div>
+
+    <div class="legend-row">
+      <span><span class="dot" style="background:var(--a-color)"></span><b>A</b> — hasta 80% acumulado</span>
+      <span><span class="dot" style="background:var(--b-color)"></span><b>B</b> — de 80% hasta 90% acumulado</span>
+      <span><span class="dot" style="background:var(--c-color)"></span><b>C</b> — más de 90% acumulado</span>
+    </div>
+
+    <div class="score-bar" id="scoreBar"></div>
+  </section>
+
+  <section class="panel chart-panel" id="chartPanel">
+    <div class="panel-head">
+      <h2>📊 Curva de Pareto</h2>
+      <span class="scenario-tag">Barras = cantidad · Línea = % acumulado</span>
+    </div>
+    <div class="chart-wrap" id="chartWrap"></div>
+  </section>
+</main>
+
+<div class="instructions">
+  <details>
+    <summary>❓ Cómo se hace el análisis de Pareto</summary>
+    <ol>
+      <li>Observa la tabla con los productos y su cantidad (unidades vendidas). Aún no están ordenados.</li>
+      <li>Antes de organizar, escribe en la columna <b>Orden</b> la posición (1, 2, 3...) que crees que ocupa cada producto al ordenar de <b>mayor a menor</b> cantidad.</li>
+      <li>Presiona <b>Organizar</b>: la tabla se reordenará de mayor a menor y podrás ver si tu predicción de orden era correcta (verde) o no (rojo).</li>
+      <li>Calcula el <b>%</b> de cada producto = (Cantidad del producto ÷ Cantidad total) × 100.</li>
+      <li>Calcula el <b>% Acumulado</b> = suma del % de ese producto más el % de todos los productos anteriores en el orden.</li>
+      <li>Clasifica cada producto según su % Acumulado: <b>A</b> hasta 80%, <b>B</b> hasta 90%, <b>C</b> más de 90%.</li>
+      <li>Presiona <b>Verificar</b> para revisar tus respuestas. También aparecerá la curva de Pareto con la línea de % acumulado.</li>
+      <li>Usa <b>Revelar respuestas</b> si necesitas ver la solución completa, o <b>Reiniciar intento</b> para borrar lo escrito sin cambiar el caso.</li>
+    </ol>
+  </details>
+</div>
+
+<footer>Herramienta educativa para docentes · Simulador del Principio de Pareto y clasificación ABC</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  const PRODUCT_POOL = [
+    { name:"Laptops", icon:"💻" },
+    { name:"Mouse inalámbrico", icon:"🖱️" },
+    { name:"Teclados", icon:"⌨️" },
+    { name:"Monitores", icon:"🖥️" },
+    { name:"Impresoras", icon:"🖨️" },
+    { name:"Tablets", icon:"📱" },
+    { name:"Audífonos", icon:"🎧" },
+    { name:"Cámaras web", icon:"📷" },
+    { name:"Discos duros externos", icon:"💾" },
+    { name:"Cargadores", icon:"🔌" },
+    { name:"Parlantes Bluetooth", icon:"🔊" },
+    { name:"Bases refrigerantes", icon:"🧊" },
+  ];
+
+  const el = id => document.getElementById(id);
+  const tbody = el("tbody");
+  const countSelect = el("countSelect");
+  const newCaseBtn = el("newCaseBtn");
+  const organizeBtn = el("organizeBtn");
+  const verifyBtn = el("verifyBtn");
+  const revealBtn = el("revealBtn");
+  const retryBtn = el("retryBtn");
+  const scoreBar = el("scoreBar");
+  const chartPanel = el("chartPanel");
+  const chartWrap = el("chartWrap");
+
+  let rows = [];        // canonical data, one entry per product, includes correct values + user inputs
+  let displayOrder = []; // array of indices into `rows`, current visual order
+  let organized = false;
+
+  function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+
+  function shuffle(arr){
+    const a = arr.slice();
+    for(let i=a.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i],a[j]]=[a[j],a[i]];
+    }
+    return a;
+  }
+
+  function generateQuantities(n){
+    const base = randInt(320,620);
+    let vals = [];
+    for(let k=0;k<n;k++){
+      const decay = Math.pow(k+1, 1.15 + Math.random()*0.15);
+      const noise = 0.82 + Math.random()*0.36;
+      let v = Math.round((base/decay) * noise);
+      v = Math.max(v, 3);
+      vals.push(v);
+    }
+    // ensure uniqueness
+    const seen = new Set();
+    for(let i=0;i<vals.length;i++){
+      while(seen.has(vals[i])){ vals[i] += 1; }
+      seen.add(vals[i]);
+    }
+    return vals;
+  }
+
+  function buildCase(){
+    const n = parseInt(countSelect.value, 10);
+    const chosenProducts = shuffle(PRODUCT_POOL).slice(0, n);
+    const quantities = generateQuantities(n);
+
+    rows = chosenProducts.map((p, i) => ({
+      name:p.name, icon:p.icon, quantity:quantities[i],
+      userOrden:"", userPercent:"", userCum:"", userClass:"",
+      statusOrden:null, statusPercent:null, statusCum:null, statusClass:null
+    }));
+
+    const total = rows.reduce((s,r)=>s+r.quantity,0);
+    const sortedIdx = rows.map((r,i)=>i).sort((a,b)=> rows[b].quantity - rows[a].quantity);
+
+    let cum = 0;
+    sortedIdx.forEach((idx, pos) => {
+      const r = rows[idx];
+      r.correctRank = pos+1;
+      r.correctPercent = (r.quantity/total)*100;
+      cum += r.correctPercent;
+      r.correctCum = cum;
+      r.correctClass = r.correctCum <= 80.001 ? "A" : (r.correctCum <= 90.001 ? "B" : "C");
+    });
+    // force last cumulative to exactly 100 (avoid floating point drift in display)
+    const lastIdx = sortedIdx[sortedIdx.length-1];
+    rows[lastIdx].correctCum = 100;
+
+    displayOrder = shuffle(rows.map((r,i)=>i));
+    organized = false;
+    organizeBtn.disabled = false;
+  }
+
+  function fmt1(n){ return (Math.round(n*10)/10).toFixed(1); }
+
+  function renderTable(){
+    tbody.innerHTML = "";
+    displayOrder.forEach(idx => {
+      const r = rows[idx];
+      const tr = document.createElement("tr");
+      tr.dataset.idx = idx;
+
+      const ordenCls = r.statusOrden ? (" " + r.statusOrden) : "";
+      const pctCls = r.statusPercent ? (" " + r.statusPercent) : "";
+      const cumCls = r.statusCum ? (" " + r.statusCum) : "";
+      const classCls = r.statusClass ? (" " + r.statusClass) : "";
+
+      tr.innerHTML =
+        '<td><div class="prod-cell"><span class="prod-icon">' + r.icon + '</span>' + r.name + '</div></td>' +
+        '<td><span class="given-value">' + r.quantity + '</span></td>' +
+        '<td><div class="cell-input' + ordenCls + '" data-field="orden"><input type="number" min="1" value="' + r.userOrden + '"></div></td>' +
+        '<td><div class="cell-input wide' + pctCls + '" data-field="percent"><input type="number" step="0.1" min="0" value="' + r.userPercent + '"><span>%</span></div></td>' +
+        '<td><div class="cell-input wide' + cumCls + '" data-field="cum"><input type="number" step="0.1" min="0" value="' + r.userCum + '"><span>%</span></div></td>' +
+        '<td><div class="cell-input' + classCls + '" data-field="class">' +
+          '<select><option value="">--</option><option value="A"' + (r.userClass==="A"?" selected":"") + '>A</option>' +
+          '<option value="B"' + (r.userClass==="B"?" selected":"") + '>B</option>' +
+          '<option value="C"' + (r.userClass==="C"?" selected":"") + '>C</option></select>' +
+        '</div></td>';
+
+      tr.querySelector('[data-field="orden"] input').addEventListener("input", (e)=>{ r.userOrden = e.target.value; });
+      tr.querySelector('[data-field="percent"] input').addEventListener("input", (e)=>{ r.userPercent = e.target.value; });
+      tr.querySelector('[data-field="cum"] input').addEventListener("input", (e)=>{ r.userCum = e.target.value; });
+      tr.querySelector('[data-field="class"] select').addEventListener("change", (e)=>{ r.userClass = e.target.value; });
+
+      tbody.appendChild(tr);
+    });
+  }
+
+  function organize(){
+    if(organized) return;
+    // grade the "orden" guesses as they stand right now
+    rows.forEach(r => {
+      if(r.userOrden === "" || r.userOrden === null){ r.statusOrden = null; }
+      else {
+        r.statusOrden = (parseInt(r.userOrden,10) === r.correctRank) ? "correct" : "incorrect";
+      }
+    });
+
+    const tableEl = tbody.closest("table");
+    tbody.classList.add("fade-out");
+    setTimeout(() => {
+      displayOrder = rows.map((r,i)=>i).sort((a,b)=> rows[b].quantity - rows[a].quantity);
+      renderTable();
+      tbody.classList.remove("fade-out");
+      organized = true;
+      organizeBtn.disabled = true;
+    }, 320);
+  }
+
+  function withinTol(val, correct, tol){
+    return !isNaN(val) && Math.abs(val - correct) <= tol;
+  }
+
+  function verify(){
+    let correctCount = 0;
+    const totalChecks = rows.length * 4;
+
+    rows.forEach(r => {
+      // orden
+      const ordenVal = r.userOrden === "" ? NaN : parseInt(r.userOrden,10);
+      r.statusOrden = (ordenVal === r.correctRank) ? "correct" : "incorrect";
+      if(r.statusOrden === "correct") correctCount++;
+
+      // percent
+      const pctVal = r.userPercent === "" ? NaN : parseFloat(r.userPercent);
+      r.statusPercent = withinTol(pctVal, r.correctPercent, 0.15) ? "correct" : "incorrect";
+      if(r.statusPercent === "correct") correctCount++;
+
+      // cumulative
+      const cumVal = r.userCum === "" ? NaN : parseFloat(r.userCum);
+      r.statusCum = withinTol(cumVal, r.correctCum, 0.2) ? "correct" : "incorrect";
+      if(r.statusCum === "correct") correctCount++;
+
+      // classification
+      r.statusClass = (r.userClass === r.correctClass) ? "correct" : "incorrect";
+      if(r.statusClass === "correct") correctCount++;
+    });
+
+    renderTable();
+
+    const pct = Math.round((correctCount/totalChecks)*100);
+    scoreBar.textContent = "Resultado: " + correctCount + " de " + totalChecks + " respuestas correctas (" + pct + "%)";
+    scoreBar.className = "score-bar show " + (pct >= 70 ? "good" : "bad");
+
+    renderChart();
+  }
+
+  function reveal(){
+    if(!confirm("¿Deseas ver las respuestas correctas? Esto reemplazará lo que hayas ingresado.")) return;
+    if(!organized){
+      displayOrder = rows.map((r,i)=>i).sort((a,b)=> rows[b].quantity - rows[a].quantity);
+      organized = true;
+      organizeBtn.disabled = true;
+    }
+    rows.forEach(r => {
+      r.userOrden = r.correctRank;
+      r.userPercent = fmt1(r.correctPercent);
+      r.userCum = fmt1(r.correctCum);
+      r.userClass = r.correctClass;
+      r.statusOrden = "correct"; r.statusPercent = "correct"; r.statusCum = "correct"; r.statusClass = "correct";
+    });
+    renderTable();
+    const total = rows.length*4;
+    scoreBar.textContent = "Respuestas correctas reveladas (" + total + " de " + total + ")";
+    scoreBar.className = "score-bar show good";
+    renderChart();
+  }
+
+  function clearInputs(){
+    rows.forEach(r => {
+      r.userOrden=""; r.userPercent=""; r.userCum=""; r.userClass="";
+      r.statusOrden=null; r.statusPercent=null; r.statusCum=null; r.statusClass=null;
+    });
+    renderTable();
+    scoreBar.className = "score-bar";
+    scoreBar.textContent = "";
+    chartPanel.classList.remove("show");
+    chartWrap.innerHTML = "";
+  }
+
+  function classColor(cls){
+    return cls === "A" ? "var(--a-color)" : cls === "B" ? "var(--b-color)" : "var(--c-color)";
+  }
+
+  function renderChart(){
+    const sorted = rows.slice().sort((a,b)=> b.quantity - a.quantity);
+    const n = sorted.length;
+    const width = Math.max(640, n*90);
+    const height = 340;
+    const marginL = 60, marginR = 60, marginT = 20, marginB = 70;
+    const plotW = width - marginL - marginR;
+    const plotH = height - marginT - marginB;
+    const barGap = 18;
+    const barW = (plotW/n) - barGap;
+    const maxQty = Math.max(...sorted.map(r=>r.quantity));
+
+    function xFor(i){ return marginL + i*(plotW/n) + (plotW/n - barW)/2; }
+    function yBar(qty){ return marginT + plotH - (qty/maxQty)*plotH; }
+    function yPct(pct){ return marginT + plotH - (pct/100)*plotH; }
+
+    let bars = "", labels = "", linePts = "", dots = "", pctLabels = "";
+    sorted.forEach((r,i) => {
+      const bx = xFor(i);
+      const by = yBar(r.quantity);
+      const bh = (marginT+plotH) - by;
+      bars += '<rect x="'+bx+'" y="'+by+'" width="'+barW+'" height="'+bh+'" rx="4" fill="'+classColor(r.correctClass)+'" opacity="0.85"></rect>';
+      labels += '<text x="'+(bx+barW/2)+'" y="'+(marginT+plotH+18)+'" font-size="11" fill="#c7d2ee" text-anchor="middle">'+r.name.split(" ")[0]+'</text>';
+      labels += '<text x="'+(bx+barW/2)+'" y="'+(by-6)+'" font-size="11" fill="#eef2fb" text-anchor="middle" font-family="Consolas,monospace">'+r.quantity+'</text>';
+      const lx = bx+barW/2, ly = yPct(r.correctCum);
+      linePts += (i===0?"M":"L") + lx + "," + ly + " ";
+      dots += '<circle cx="'+lx+'" cy="'+ly+'" r="3.5" fill="#5ee7ff" stroke="#04202a" stroke-width="1"></circle>';
+      pctLabels += '<text x="'+lx+'" y="'+(ly-10)+'" font-size="10.5" fill="#5ee7ff" text-anchor="middle" font-family="Consolas,monospace">'+fmt1(r.correctCum)+'%</text>';
+    });
+
+    const y80 = yPct(80), y90 = yPct(90);
+
+    const svg = '' +
+      '<svg class="pareto-chart" viewBox="0 0 '+width+' '+height+'" width="'+width+'" height="'+height+'" xmlns="http://www.w3.org/2000/svg">' +
+        '<line x1="'+marginL+'" y1="'+y80+'" x2="'+(width-marginR)+'" y2="'+y80+'" stroke="#f5b325" stroke-width="1.4" stroke-dasharray="6 5"></line>' +
+        '<text x="'+(width-marginR+4)+'" y="'+(y80+4)+'" font-size="11" fill="#f5b325" font-family="Consolas,monospace">80%</text>' +
+        '<line x1="'+marginL+'" y1="'+y90+'" x2="'+(width-marginR)+'" y2="'+y90+'" stroke="#ef5350" stroke-width="1.4" stroke-dasharray="6 5"></line>' +
+        '<text x="'+(width-marginR+4)+'" y="'+(y90+4)+'" font-size="11" fill="#ef5350" font-family="Consolas,monospace">90%</text>' +
+        '<line x1="'+marginL+'" y1="'+(marginT+plotH)+'" x2="'+(width-marginR)+'" y2="'+(marginT+plotH)+'" stroke="#263250" stroke-width="1.5"></line>' +
+        bars +
+        '<path d="'+linePts+'" fill="none" stroke="#5ee7ff" stroke-width="2.4"></path>' +
+        dots + pctLabels + labels +
+      '</svg>';
+
+    chartWrap.innerHTML = svg;
+    chartPanel.classList.add("show");
+  }
+
+  function newCase(){
+    buildCase();
+    renderTable();
+    scoreBar.className = "score-bar";
+    scoreBar.textContent = "";
+    chartPanel.classList.remove("show");
+    chartWrap.innerHTML = "";
+  }
+
+  newCaseBtn.addEventListener("click", newCase);
+  organizeBtn.addEventListener("click", organize);
+  verifyBtn.addEventListener("click", verify);
+  revealBtn.addEventListener("click", reveal);
+  retryBtn.addEventListener("click", clearInputs);
+
+  countSelect.value = String(randInt(5,10));
+  newCase();
+})();
+</script>
+</body>
+</html>
