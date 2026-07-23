@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Principio de Pareto - Actividad</title>
+<style>
+body{font-family:Arial,sans-serif;background:#f4f6f9;padding:20px;}
+.container{max-width:1200px;margin:auto;background:white;padding:20px;border-radius:12px;box-shadow:0 0 10px rgba(0,0,0,.1);} 
+h1{text-align:center;color:#0f766e;}
+button{padding:10px 15px;margin:5px;border:none;border-radius:6px;background:#2563eb;color:white;cursor:pointer;font-weight:bold;}
+button:hover{opacity:.9;}
+table{width:100%;border-collapse:collapse;margin-top:15px;}
+th,td{border:1px solid #ccc;padding:8px;text-align:center;}
+th{background:#0f766e;color:white;}
+input{width:80px;padding:4px;text-align:center;}
+.message{margin-top:10px;font-weight:bold;}
+.hidden{display:none;}
+.result{background:#eef;padding:15px;border-radius:8px;margin-top:15px;}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Actividad Interactiva - Principio de Pareto</h1>
+<p>1. Organice los productos de mayor a menor cantidad.<br>2. Calcule el porcentaje individual.<br>3. Calcule el porcentaje acumulado.<br>4. Clasifique los productos en A, B o C.</p>
+<button onclick="generarEjercicio()">Generar ejercicio</button>
+<div id="mensaje" class="message"></div>
+<table id="tabla">
+<thead>
+<tr>
+<th>Producto</th><th>Cantidad</th><th>Orden</th><th>%</th><th>% Acumulado</th><th>Clasificación</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+<div>
+<button onclick="validarOrden()">Validar orden</button>
+<button onclick="validarPorcentajes()">Validar porcentajes</button>
+<button onclick="validarAcumulado()">Validar % acumulado</button>
+<button onclick="validarClasificacion()">Validar clasificación ABC</button>
+<button onclick="mostrarSolucion()">Mostrar solución completa</button>
+</div>
+<div id="solucion" class="result hidden"></div>
+</div>
+<script>
+let productos=[];
+let ordenCorrecto=[];
+let porcentajes=[];
+let acumulados=[];
+let clasificaciones=[];
+function generarEjercicio(){
+productos=[];
+const letras='ABCDEFGHIJ';
+let cantidadProductos=Math.floor(Math.random()*6)+5;
+const tbody=document.querySelector('#tabla tbody');
+tbody.innerHTML='';
+for(let i=0;i<cantidadProductos;i++){
+let cantidad=Math.floor(Math.random()*4900)+100;
+productos.push({nombre:'Producto '+letras[i],cantidad:cantidad});
+}
+let total=productos.reduce((s,p)=>s+p.cantidad,0);
+ordenCorrecto=[...productos].sort((a,b)=>b.cantidad-a.cantidad);
+porcentajes=[]; acumulados=[]; clasificaciones=[];
+let acum=0;
+ordenCorrecto.forEach((p)=>{
+let por=(p.cantidad/total)*100;
+porcentajes.push(Number(por.toFixed(2)));
+acum+=por;
+acumulados.push(Number(acum.toFixed(2)));
+if(acum<=80){clasificaciones.push('A');}
+else if(acum<=90){clasificaciones.push('B');}
+else{clasificaciones.push('C');}
+});
+productos.forEach((p)=>{
+let row=`<tr><td>${p.nombre}</td><td>${p.cantidad}</td><td><input></td><td><input></td><td><input></td><td><input></td></tr>`;
+tbody.innerHTML+=row;
+});
+document.getElementById('mensaje').innerHTML='Ejercicio generado correctamente.';
+document.getElementById('solucion').classList.add('hidden');
+}
+function validarOrden(){
+const filas=document.querySelectorAll('#tabla tbody tr');
+let ok=true;
+filas.forEach((fila,i)=>{
+let nombre=fila.cells[0].innerText;
+let valor=parseInt(fila.cells[2].querySelector('input').value);
+let indice=ordenCorrecto.findIndex(x=>x.nombre===nombre)+1;
+if(valor!==indice){ok=false;}
+});
+mostrarMensaje(ok,'Orden correcto.','El orden contiene errores.');
+}
+function validarPorcentajes(){
+const filas=document.querySelectorAll('#tabla tbody tr');
+let ok=true;
+filas.forEach((fila)=>{
+let nombre=fila.cells[0].innerText;
+let valor=parseFloat(fila.cells[3].querySelector('input').value);
+let indice=ordenCorrecto.findIndex(x=>x.nombre===nombre);
+if(Math.abs(valor-porcentajes[indice])>0.1){ok=false;}
+});
+mostrarMensaje(ok,'Porcentajes correctos.','Revise los porcentajes.');
+}
+function validarAcumulado(){
+const filas=document.querySelectorAll('#tabla tbody tr');
+let ok=true;
+filas.forEach((fila)=>{
+let nombre=fila.cells[0].innerText;
+let valor=parseFloat(fila.cells[4].querySelector('input').value);
+let indice=ordenCorrecto.findIndex(x=>x.nombre===nombre);
+if(Math.abs(valor-acumulados[indice])>0.1){ok=false;}
+});
+mostrarMensaje(ok,'% acumulados correctos.','Revise los porcentajes acumulados.');
+}
+function validarClasificacion(){
+const filas=document.querySelectorAll('#tabla tbody tr');
+let ok=true;
+filas.forEach((fila)=>{
+let nombre=fila.cells[0].innerText;
+let valor=fila.cells[5].querySelector('input').value.toUpperCase();
+let indice=ordenCorrecto.findIndex(x=>x.nombre===nombre);
+if(valor!==clasificaciones[indice]){ok=false;}
+});
+mostrarMensaje(ok,'Clasificación ABC correcta.','La clasificación contiene errores.');
+}
+function mostrarMensaje(exito,m1,m2){
+let div=document.getElementById('mensaje');
+div.style.color=exito?'green':'red';
+div.innerText=exito?m1:m2;
+}
+function mostrarSolucion(){
+let html='<h3>Solución correcta</h3><table><tr><th>Producto</th><th>Cantidad</th><th>Orden</th><th>%</th><th>% Acumulado</th><th>Clasificación</th></tr>';
+ordenCorrecto.forEach((p,i)=>{
+html+=`<tr><td>${p.nombre}</td><td>${p.cantidad}</td><td>${i+1}</td><td>${porcentajes[i].toFixed(2)}%</td><td>${acumulados[i].toFixed(2)}%</td><td>${clasificaciones[i]}</td></tr>`;
+});
+html+='</table>';
+let div=document.getElementById('solucion');
+div.innerHTML=html;
+div.classList.remove('hidden');
+}
+generarEjercicio();
+</script>
+</body>
+</html>
