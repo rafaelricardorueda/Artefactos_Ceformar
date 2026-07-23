@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conteo Físico de Inventario · Simulador de Auditoría de Bodega</title>
+<style>
+  :root{
+    --bg:#0b1220;
+    --bg-glow: radial-gradient(1100px 650px at 10% -10%, #1a2740 0%, transparent 60%),
+               radial-gradient(900px 550px at 105% 15%, #241a33 0%, transparent 55%),
+               #070c16;
+    --wood-1:#8a5a30;
+    --wood-2:#5c3719;
+    --wood-3:#3a220f;
+    --shelf-int:#241a10;
+    --paper:#f3ecd9;
+    --paper-2:#eae1c8;
+    --paper-line:#cabb92;
+    --ink:#2b2116;
+    --ink-soft:#5b5240;
+    --brass:#c9962f;
+    --brass-dk:#9a6f1c;
+    --ok:#2f7d4f;
+    --ok-bg:#e3f1e6;
+    --bad:#a4342b;
+    --bad-bg:#f7e4e1;
+    --c-cajas:#c1622b;
+    --c-botellas:#2f7d4f;
+    --c-latas:#3563a6;
+    --c-paquetes:#8a3b6b;
+    --c-frascos:#1f7a72;
+    --font-display:Georgia,'Times New Roman',serif;
+    --font-body:'Segoe UI',system-ui,-apple-system,Helvetica,Arial,sans-serif;
+    --font-mono:'Consolas','Courier New',monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0; min-height:100vh;
+    background:var(--bg-glow);
+    color:#e7ecf7;
+    font-family:var(--font-body);
+    display:flex; flex-direction:column;
+  }
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image:
+      linear-gradient(rgba(255,255,255,.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.02) 1px, transparent 1px);
+    background-size:44px 44px;
+  }
+
+  header{
+    position:relative; z-index:2;
+    padding:22px 26px 14px;
+    text-align:center;
+  }
+  .eyebrow{
+    font-size:.72rem; letter-spacing:.22em; text-transform:uppercase;
+    color:var(--brass); font-weight:700;
+  }
+  h1{
+    margin:6px 0 4px; font-family:var(--font-display); font-weight:700;
+    font-size:clamp(1.5rem,3vw,2.1rem); letter-spacing:.01em; color:#f7f3e8;
+  }
+  .subtitle{ color:#a9b6d6; font-size:.9rem; max-width:640px; margin:0 auto; }
+
+  .toolbar{
+    display:flex; gap:10px; justify-content:center; flex-wrap:wrap;
+    margin-top:16px;
+  }
+  .btn{
+    border:none; cursor:pointer; font-family:var(--font-body); font-weight:700;
+    border-radius:10px; padding:11px 18px; letter-spacing:.02em; font-size:.88rem;
+    transition:transform .15s ease, box-shadow .15s ease, filter .15s ease;
+  }
+  .btn:active{ transform:translateY(1px) scale(.98); }
+  .btn:disabled{ opacity:.4; cursor:not-allowed; }
+  .btn-primary{
+    color:#241804;
+    background:linear-gradient(180deg,#e9c877,var(--brass) 60%,var(--brass-dk));
+    box-shadow:0 6px 0 var(--brass-dk), 0 12px 22px rgba(201,150,47,.25);
+  }
+  .btn-primary:hover:not(:disabled){ filter:brightness(1.05); }
+  .btn-primary:active:not(:disabled){ box-shadow:0 2px 0 var(--brass-dk); transform:translateY(4px); }
+  .btn-ghost{
+    background:#182236; color:#dbe4fb; border:1px solid #2c3a5c;
+  }
+  .btn-ghost:hover:not(:disabled){ background:#20304f; }
+
+  main{
+    position:relative; z-index:2;
+    flex:1;
+    display:grid;
+    grid-template-columns: minmax(280px,400px) 1fr;
+    gap:22px;
+    padding:10px 26px 40px;
+    max-width:1400px; margin:0 auto; width:100%;
+  }
+  @media (max-width:960px){ main{ grid-template-columns:1fr; } }
+
+  /* ============ SHELF ============ */
+  .shelf-card{
+    background:linear-gradient(180deg, var(--wood-2), var(--wood-3));
+    border-radius:16px; padding:16px;
+    box-shadow:0 20px 45px rgba(0,0,0,.5), inset 0 0 0 2px rgba(0,0,0,.25);
+    position:relative;
+  }
+  .shelf-title{
+    display:flex; align-items:center; justify-content:space-between;
+    color:#f4e8d2; font-weight:700; font-size:.85rem; letter-spacing:.04em;
+    text-transform:uppercase; margin-bottom:10px; padding:0 4px;
+  }
+  .shelf-title .hint{ font-weight:600; font-size:.72rem; color:#d9c295; text-transform:none; letter-spacing:0; }
+  .shelf-unit{
+    background:var(--shelf-int);
+    border:3px solid var(--wood-1);
+    border-radius:8px;
+    overflow:hidden;
+  }
+  .compartment{
+    display:flex; border-bottom:6px solid var(--wood-1);
+    min-height:78px;
+  }
+  .compartment:last-child{ border-bottom:none; }
+  .comp-label{
+    width:84px; flex:none; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:2px; padding:6px 4px; text-align:center;
+    border-right:3px solid var(--wood-1);
+    color:#fff;
+  }
+  .comp-label .ic{ font-size:1.5rem; filter:drop-shadow(0 2px 2px rgba(0,0,0,.4)); }
+  .comp-label .tx{ font-size:.62rem; font-weight:800; letter-spacing:.02em; line-height:1.15; }
+  .comp-items{
+    flex:1; display:flex; flex-wrap:wrap; align-content:center; gap:4px 5px;
+    padding:8px 10px;
+  }
+  .comp-items .unit{
+    font-size:1.15rem; line-height:1;
+    filter:drop-shadow(0 1px 2px rgba(0,0,0,.5));
+  }
+  .comp-items .unit.group-end{ margin-right:9px; }
+
+  /* ============ PAPER LEDGER ============ */
+  .paper-wrap{ position:relative; }
+  .paper{
+    background:var(--paper);
+    border-radius:14px;
+    padding:22px 22px 26px;
+    box-shadow:0 25px 55px rgba(0,0,0,.45);
+    color:var(--ink);
+    position:relative;
+    overflow:hidden;
+  }
+  .paper::before{
+    content:""; position:absolute; left:0; top:0; bottom:0; width:56px;
+    background:repeating-linear-gradient(180deg, transparent 0 27px, var(--paper-line) 27px 28px);
+    opacity:.5; pointer-events:none;
+  }
+  .paper-head{
+    display:flex; align-items:baseline; justify-content:space-between; gap:10px;
+    margin-bottom:14px; padding-left:46px; flex-wrap:wrap;
+  }
+  .paper-head h2{
+    font-family:var(--font-display); font-size:1.15rem; margin:0; letter-spacing:.02em;
+  }
+  .paper-head .case-id{ font-family:var(--font-mono); font-size:.78rem; color:var(--ink-soft); }
+
+  .table-scroll{ overflow-x:auto; padding-left:46px; }
+  table{ border-collapse:collapse; width:100%; min-width:820px; }
+  thead th{
+    font-family:var(--font-body); font-size:.68rem; text-transform:uppercase; letter-spacing:.04em;
+    color:var(--ink-soft); font-weight:700; text-align:center;
+    padding:6px 6px 10px; border-bottom:2px solid var(--ink);
+  }
+  thead th.col-prod{ text-align:left; }
+  tbody td{
+    padding:9px 6px; border-bottom:1px solid var(--paper-line);
+    text-align:center; vertical-align:middle;
+  }
+  tbody tr:hover{ background:rgba(0,0,0,.03); }
+  .prod-cell{ display:flex; align-items:center; gap:8px; text-align:left; font-weight:700; font-size:.86rem; }
+  .prod-swatch{ width:10px; height:10px; border-radius:3px; flex:none; }
+  .given-value{ font-family:var(--font-mono); font-weight:700; font-size:.92rem; }
+  .cell-input{
+    display:inline-flex; align-items:center; gap:2px;
+    background:#fff; border:1.5px solid #b9ac84; border-radius:8px;
+    padding:3px 6px; min-width:64px;
+  }
+  .cell-input .prefix{ font-family:var(--font-mono); color:var(--ink-soft); font-size:.8rem; }
+  .cell-input input{
+    width:64px; border:none; outline:none; background:transparent;
+    font-family:var(--font-mono); font-size:.92rem; text-align:right; color:var(--ink);
+  }
+  .cell-input.cost input{ width:78px; }
+  .cell-input.correct{ border-color:var(--ok); background:var(--ok-bg); }
+  .cell-input.incorrect{ border-color:var(--bad); background:var(--bad-bg); }
+
+  tfoot td{
+    padding:12px 6px; font-weight:800; border-top:2px solid var(--ink);
+    font-family:var(--font-mono);
+  }
+  tfoot .tf-label{ font-family:var(--font-body); text-align:left; font-size:.85rem; letter-spacing:.02em; }
+
+  .score-bar{
+    margin:18px 4px 0 46px; padding:12px 16px; border-radius:10px;
+    background:var(--paper-2); border:1px dashed var(--ink-soft);
+    font-weight:700; font-size:.9rem; display:none; align-items:center; gap:10px;
+  }
+  .score-bar.show{ display:flex; }
+  .score-bar.good{ color:var(--ok); }
+  .score-bar.bad{ color:var(--bad); }
+
+  .stamp{
+    position:absolute; top:18px; right:26px; z-index:5;
+    width:118px; height:118px; border-radius:50%;
+    border:4px solid var(--bad); color:var(--bad);
+    display:flex; align-items:center; justify-content:center; text-align:center;
+    font-family:var(--font-display); font-weight:700; font-size:.85rem; letter-spacing:.03em;
+    text-transform:uppercase; line-height:1.2; padding:8px;
+    transform:scale(2.4) rotate(-18deg); opacity:0;
+    mix-blend-mode:multiply;
+    pointer-events:none;
+  }
+  .stamp.good{ border-color:var(--ok); color:var(--ok); }
+  .stamp.animate{ animation:stampIn .5s cubic-bezier(.2,.9,.3,1.3) forwards; }
+  @keyframes stampIn{
+    0%{ transform:scale(2.4) rotate(-18deg); opacity:0; }
+    60%{ transform:scale(.92) rotate(-9deg); opacity:1; }
+    100%{ transform:scale(1) rotate(-8deg); opacity:.92; }
+  }
+
+  .instructions{
+    max-width:1400px; margin:0 auto; padding:0 26px 30px;
+    position:relative; z-index:2;
+  }
+  details{
+    background:#101a30; border:1px solid #25335a; border-radius:12px;
+    padding:14px 18px; color:#c7d2ee; font-size:.88rem;
+  }
+  summary{ cursor:pointer; font-weight:700; color:#f6c445; }
+  details ol{ margin:10px 0 4px; padding-left:20px; line-height:1.7; }
+  details b{ color:#fff; }
+
+  footer{
+    text-align:center; padding:10px; font-size:.72rem; color:#6d7ba0;
+    position:relative; z-index:2;
+  }
+
+  @media (max-width:640px){
+    .comp-label{ width:64px; }
+    .comp-label .tx{ font-size:.56rem; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:.01ms !important; transition-duration:.01ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">Auditoría de bodega · simulación</div>
+  <h1>Conteo Físico de Inventario</h1>
+  <p class="subtitle">Observa la estantería, cuenta cada producto y concilia el conteo físico contra el sistema. Calcula faltantes, sobrantes y su valor en pesos.</p>
+  <div class="toolbar">
+    <button class="btn btn-primary" id="newCaseBtn">🎲 Generar nuevo caso</button>
+    <button class="btn btn-primary" id="verifyBtn">✅ Verificar</button>
+    <button class="btn btn-ghost" id="revealBtn">👁 Revelar respuestas</button>
+    <button class="btn btn-ghost" id="retryBtn">↺ Reiniciar intento</button>
+  </div>
+</header>
+
+<main>
+  <section class="shelf-card">
+    <div class="shelf-title">
+      <span>📐 Estantería — Bodega Central</span>
+      <span class="hint">👀 cuenta las unidades</span>
+    </div>
+    <div class="shelf-unit" id="shelfUnit"><!-- generado por JS --></div>
+  </section>
+
+  <section class="paper-wrap">
+    <div class="paper">
+      <div class="stamp" id="stamp">REVISADO</div>
+      <div class="paper-head">
+        <h2>Acta de Conteo y Conciliación</h2>
+        <span class="case-id" id="caseId">Caso #0001</span>
+      </div>
+
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th class="col-prod">Producto</th>
+              <th>Cant.<br>Sistema</th>
+              <th>Cant. Física<br>(según imagen)</th>
+              <th>Faltante<br>(unid.)</th>
+              <th>Sobrante<br>(unid.)</th>
+              <th>Costo<br>Unitario</th>
+              <th>Costo<br>Faltante</th>
+              <th>Costo<br>Sobrante</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"><!-- generado por JS --></tbody>
+          <tfoot>
+            <tr>
+              <td class="tf-label" colspan="5">TOTAL</td>
+              <td></td>
+              <td>
+                <div class="cell-input cost" data-field="totalFaltante">
+                  <span class="prefix">$</span><input type="number" min="0" inputmode="numeric">
+                </div>
+              </td>
+              <td>
+                <div class="cell-input cost" data-field="totalSobrante">
+                  <span class="prefix">$</span><input type="number" min="0" inputmode="numeric">
+                </div>
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div class="score-bar" id="scoreBar"></div>
+    </div>
+  </section>
+</main>
+
+<div class="instructions">
+  <details>
+    <summary>❓ Cómo se hace la conciliación</summary>
+    <ol>
+      <li>Observa cada compartimento de la estantería y <b>cuenta cuántas unidades</b> hay de cada producto. Escribe ese número en "Cantidad Física (según imagen)".</li>
+      <li>Compara esa cantidad con la <b>Cantidad en Sistema</b> (ya registrada).</li>
+      <li>Si el sistema tiene <b>más</b> unidades que las que ves físicamente, hay un <b>faltante</b> = Sistema − Física.</li>
+      <li>Si hay <b>más</b> unidades físicas que las del sistema, hay un <b>sobrante</b> = Física − Sistema.</li>
+      <li>Si ambas cantidades coinciden, faltante y sobrante son <b>0</b>.</li>
+      <li>Multiplica cada cantidad por el <b>Costo Unitario</b> para obtener el Costo de Faltante y el Costo de Sobrante.</li>
+      <li>Suma cada columna de costos para completar la fila <b>TOTAL</b>.</li>
+      <li>Presiona <b>Verificar</b> para revisar tus respuestas, o <b>Revelar respuestas</b> si necesitas ver la solución completa.</li>
+    </ol>
+  </details>
+</div>
+
+<footer>Herramienta educativa para docentes · Simulador de conteo físico y conciliación de inventarios</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  const PRODUCTS = [
+    { key:"cajas",     name:"Cajas de cartón",    icon:"📦", color:"var(--c-cajas)" },
+    { key:"botellas",  name:"Botellas de aceite", icon:"🍾", color:"var(--c-botellas)" },
+    { key:"latas",     name:"Latas de conserva",  icon:"🥫", color:"var(--c-latas)" },
+    { key:"paquetes",  name:"Paquetes de arroz",  icon:"🎁", color:"var(--c-paquetes)" },
+    { key:"frascos",   name:"Frascos de salsa",   icon:"🧴", color:"var(--c-frascos)" },
+  ];
+
+  const el = id => document.getElementById(id);
+  const shelfUnit = el("shelfUnit");
+  const tbody = el("tbody");
+  const caseId = el("caseId");
+  const scoreBar = el("scoreBar");
+  const stamp = el("stamp");
+  const newCaseBtn = el("newCaseBtn");
+  const verifyBtn = el("verifyBtn");
+  const revealBtn = el("revealBtn");
+  const retryBtn = el("retryBtn");
+
+  let currentCase = null;
+
+  function randInt(min, max){ return Math.floor(Math.random()*(max-min+1))+min; }
+  function randChoice(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+  function generateCase(){
+    const data = {};
+    PRODUCTS.forEach(p => {
+      const physical = randInt(4, 18);
+      const relation = randChoice(["igual","igual","faltante","faltante","sobrante","sobrante"]);
+      let sistema;
+      if(relation === "igual"){
+        sistema = physical;
+      } else if(relation === "faltante"){
+        sistema = physical + randInt(1,6);
+      } else {
+        sistema = Math.max(physical - randInt(1,6), 0);
+      }
+      const unitCost = randInt(5,45) * 1000;
+      const faltante = Math.max(sistema - physical, 0);
+      const sobrante = Math.max(physical - sistema, 0);
+      const costoFaltante = faltante * unitCost;
+      const costoSobrante = sobrante * unitCost;
+      data[p.key] = { physical, sistema, unitCost, faltante, sobrante, costoFaltante, costoSobrante };
+    });
+    const totalFaltante = PRODUCTS.reduce((s,p) => s + data[p.key].costoFaltante, 0);
+    const totalSobrante = PRODUCTS.reduce((s,p) => s + data[p.key].costoSobrante, 0);
+    return { data, totalFaltante, totalSobrante, id: randInt(1000,9999) };
+  }
+
+  function formatCOP(n){
+    return "$" + Number(n).toLocaleString("es-CO");
+  }
+
+  function renderShelf(){
+    shelfUnit.innerHTML = "";
+    PRODUCTS.forEach(p => {
+      const qty = currentCase.data[p.key].physical;
+      const comp = document.createElement("div");
+      comp.className = "compartment";
+
+      const label = document.createElement("div");
+      label.className = "comp-label";
+      label.style.background = p.color;
+      label.innerHTML = '<span class="ic">' + p.icon + '</span><span class="tx">' + p.name + '</span>';
+      comp.appendChild(label);
+
+      const items = document.createElement("div");
+      items.className = "comp-items";
+      for(let i=0;i<qty;i++){
+        const u = document.createElement("span");
+        u.className = "unit" + ((i%5===4) ? " group-end" : "");
+        u.textContent = p.icon;
+        items.appendChild(u);
+      }
+      comp.appendChild(items);
+      shelfUnit.appendChild(comp);
+    });
+  }
+
+  function inputCell(field, isCost){
+    return '<div class="cell-input' + (isCost ? ' cost' : '') + '" data-field="' + field + '">' +
+      (isCost ? '<span class="prefix">$</span>' : '') +
+      '<input type="number" min="0" inputmode="numeric">' +
+      '</div>';
+  }
+
+  function renderTable(){
+    tbody.innerHTML = "";
+    PRODUCTS.forEach(p => {
+      const d = currentCase.data[p.key];
+      const tr = document.createElement("tr");
+      tr.dataset.key = p.key;
+      tr.innerHTML =
+        '<td><div class="prod-cell"><span class="prod-swatch" style="background:' + p.color + '"></span>' + p.name + '</div></td>' +
+        '<td><span class="given-value">' + d.sistema + '</span></td>' +
+        '<td>' + inputCell("physical", false) + '</td>' +
+        '<td>' + inputCell("faltante", false) + '</td>' +
+        '<td>' + inputCell("sobrante", false) + '</td>' +
+        '<td><span class="given-value">' + formatCOP(d.unitCost) + '</span></td>' +
+        '<td>' + inputCell("costoFaltante", true) + '</td>' +
+        '<td>' + inputCell("costoSobrante", true) + '</td>';
+      tbody.appendChild(tr);
+    });
+  }
+
+  function startCase(){
+    currentCase = generateCase();
+    caseId.textContent = "Caso #" + currentCase.id;
+    renderShelf();
+    renderTable();
+    clearFeedback();
+  }
+
+  function clearFeedback(){
+    scoreBar.className = "score-bar";
+    scoreBar.textContent = "";
+    stamp.className = "stamp";
+    document.querySelectorAll(".cell-input").forEach(c => c.classList.remove("correct","incorrect"));
+  }
+
+  function clearInputs(){
+    document.querySelectorAll(".cell-input input").forEach(inp => inp.value = "");
+    clearFeedback();
+  }
+
+  function getAllCells(){
+    // returns array of {el, correctValue}
+    const cells = [];
+    PRODUCTS.forEach(p => {
+      const d = currentCase.data[p.key];
+      const row = tbody.querySelector('tr[data-key="' + p.key + '"]');
+      cells.push({ el: row.querySelector('[data-field="physical"]'), correct: d.physical });
+      cells.push({ el: row.querySelector('[data-field="faltante"]'), correct: d.faltante });
+      cells.push({ el: row.querySelector('[data-field="sobrante"]'), correct: d.sobrante });
+      cells.push({ el: row.querySelector('[data-field="costoFaltante"]'), correct: d.costoFaltante });
+      cells.push({ el: row.querySelector('[data-field="costoSobrante"]'), correct: d.costoSobrante });
+    });
+    const tfoot = document.querySelector("tfoot");
+    cells.push({ el: tfoot.querySelector('[data-field="totalFaltante"]'), correct: currentCase.totalFaltante });
+    cells.push({ el: tfoot.querySelector('[data-field="totalSobrante"]'), correct: currentCase.totalSobrante });
+    return cells;
+  }
+
+  function verify(){
+    const cells = getAllCells();
+    let correctCount = 0;
+    cells.forEach(c => {
+      const input = c.el.querySelector("input");
+      const raw = input.value.trim();
+      const val = raw === "" ? NaN : Number(raw);
+      c.el.classList.remove("correct","incorrect");
+      if(val === c.correct){
+        c.el.classList.add("correct");
+        correctCount++;
+      } else {
+        c.el.classList.add("incorrect");
+      }
+    });
+    const total = cells.length;
+    const pct = Math.round((correctCount/total)*100);
+    scoreBar.textContent = "Resultado: " + correctCount + " de " + total + " respuestas correctas (" + pct + "%)";
+    scoreBar.classList.add("show", pct >= 70 ? "good" : "bad");
+
+    stamp.classList.remove("animate","good");
+    void stamp.offsetWidth;
+    stamp.textContent = pct >= 70 ? "✔ Conciliado" : "✘ Revisar";
+    stamp.classList.add(pct >= 70 ? "good" : "");
+    stamp.classList.add("animate");
+  }
+
+  function reveal(){
+    if(!confirm("¿Deseas ver las respuestas correctas? Esto reemplazará lo que hayas ingresado.")) return;
+    const cells = getAllCells();
+    cells.forEach(c => {
+      c.el.querySelector("input").value = c.correct;
+      c.el.classList.remove("incorrect");
+      c.el.classList.add("correct");
+    });
+    scoreBar.textContent = "Respuestas correctas reveladas (" + cells.length + " de " + cells.length + ")";
+    scoreBar.classList.add("show","good");
+    stamp.classList.remove("animate");
+  }
+
+  newCaseBtn.addEventListener("click", startCase);
+  verifyBtn.addEventListener("click", verify);
+  revealBtn.addEventListener("click", reveal);
+  retryBtn.addEventListener("click", clearInputs);
+
+  startCase();
+})();
+</script>
+</body>
+</html>
